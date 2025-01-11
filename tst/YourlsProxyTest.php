@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 use PrivateBin\Configuration;
@@ -50,6 +50,13 @@ class YourlsProxyTest extends TestCase
     public function testForeignUrl()
     {
         $yourls = new YourlsProxy($this->_conf, 'https://other.example.com/?foo#bar');
+        $this->assertTrue($yourls->isError());
+        $this->assertEquals($yourls->getError(), 'Trying to shorten a URL that isn\'t pointing at our instance.');
+    }
+
+    public function testSneakyForeignUrl()
+    {
+        $yourls = new YourlsProxy($this->_conf, 'https://other.example.com/?q=https://example.com/?foo#bar');
         $this->assertTrue($yourls->isError());
         $this->assertEquals($yourls->getError(), 'Trying to shorten a URL that isn\'t pointing at our instance.');
     }

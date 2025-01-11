@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /**
  * PrivateBin
  *
@@ -7,10 +7,12 @@
  * @link      https://github.com/PrivateBin/PrivateBin
  * @copyright 2012 Sébastien SAUVAGE (sebsauvage.net)
  * @license   https://www.opensource.org/licenses/zlib-license.php The zlib/libpng License
- * @version   1.6.0
  */
 
 namespace PrivateBin;
+
+use AppendIterator;
+use GlobIterator;
 
 /**
  * I18n
@@ -78,11 +80,11 @@ class I18n
      *
      * @access public
      * @static
-     * @param  string $messageId
+     * @param  string|array $messageId
      * @param  mixed $args one or multiple parameters injected into placeholders
      * @return string
      */
-    public static function _($messageId)
+    public static function _($messageId, ...$args)
     {
         return forward_static_call_array('PrivateBin\I18n::translate', func_get_args());
     }
@@ -92,16 +94,16 @@ class I18n
      *
      * @access public
      * @static
-     * @param  string $messageId
+     * @param  string|array $messageId
      * @param  mixed $args one or multiple parameters injected into placeholders
      * @return string
      */
-    public static function translate($messageId)
+    public static function translate($messageId, ...$args)
     {
         if (empty($messageId)) {
             return $messageId;
         }
-        if (count(self::$_translations) === 0) {
+        if (empty(self::$_translations)) {
             self::loadTranslations();
         }
         $messages = $messageId;
@@ -111,7 +113,7 @@ class I18n
         if (!array_key_exists($messageId, self::$_translations)) {
             self::$_translations[$messageId] = $messages;
         }
-        $args = func_get_args();
+        array_unshift($args, $messageId);
         if (is_array(self::$_translations[$messageId])) {
             $number = (int) $args[1];
             $key    = self::_getPluralForm($number);
@@ -125,14 +127,17 @@ class I18n
         } else {
             $args[0] = self::$_translations[$messageId];
         }
-        // encode any non-integer arguments and the message ID, if it doesn't contain a link
+        // encode any non-integer arguments and the message ID, if it doesn't contain a link or keyboard input
         $argsCount = count($args);
-        if ($argsCount > 1) {
-            for ($i = 0; $i < $argsCount; ++$i) {
-                if (($i > 0 && !is_int($args[$i])) || strpos($args[0], '<a') === false) {
-                    $args[$i] = self::encode($args[$i]);
+        for ($i = 0; $i < $argsCount; ++$i) {
+            if ($i === 0) {
+                if (str_contains($args[0], '<a') || str_contains($args[0], '<kbd>')) {
+                    continue;
                 }
+            } elseif (is_int($args[$i])) {
+                continue;
             }
+            $args[$i] = self::encode($args[$i]);
         }
         return call_user_func_array('sprintf', $args);
     }
@@ -193,10 +198,14 @@ class I18n
     public static function getAvailableLanguages()
     {
         if (count(self::$_availableLanguages) == 0) {
-            $i18n = dir(self::_getPath());
-            while (false !== ($file = $i18n->read())) {
-                if (preg_match('/^([a-z]{2,3}).json$/', $file, $match) === 1) {
-                    self::$_availableLanguages[] = $match[1];
+            self::$_availableLanguages[] = 'en'; // en.json is not part of the release archive
+            $languageIterator            = new AppendIterator();
+            $languageIterator->append(new GlobIterator(self::_getPath('??.json')));
+            $languageIterator->append(new GlobIterator(self::_getPath('???.json'))); // for jbo
+            foreach ($languageIterator as $file) {
+                $language = $file->getBasename('.json');
+                if ($language != 'en') {
+                    self::$_availableLanguages[] = $language;
                 }
             }
         }
@@ -308,10 +317,10 @@ class I18n
      */
     protected static function _getPath($file = '')
     {
-        if (strlen(self::$_path) == 0) {
+        if (empty(self::$_path)) {
             self::$_path = PUBLIC_PATH . DIRECTORY_SEPARATOR . 'i18n';
         }
-        return self::$_path . (strlen($file) ? DIRECTORY_SEPARATOR . $file : '');
+        return self::$_path . (empty($file) ? '' : DIRECTORY_SEPARATOR . $file);
     }
 
     /**
@@ -349,6 +358,8 @@ class I18n
                 return $n % 10 === 1 && $n % 100 !== 11 ? 0 : (($n % 10 >= 2 && $n % 100 < 10 || $n % 100 >= 20) ? 1 : 2);
             case 'pl':
                 return $n === 1 ? 0 : ($n % 10 >= 2 && $n % 10 <= 4 && ($n % 100 < 10 || $n % 100 >= 20) ? 1 : 2);
+            case 'ro':
+                return $n === 1 ? 0 : (($n === 0 || ($n % 100 > 0 && $n % 100 < 20)) ? 1 : 2);
             case 'ru':
             case 'uk':
                 return $n % 10 === 1 && $n % 100 != 11 ? 0 : ($n % 10 >= 2 && $n % 10 <= 4 && ($n % 100 < 10 || $n % 100 >= 20) ? 1 : 2);

@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 use PrivateBin\I18n;
 ?><!DOCTYPE html>
 <html lang="<?php echo I18n::getLanguage(); ?>"<?php echo I18n::isRtl() ? ' dir="rtl"' : ''; ?>>
@@ -14,44 +14,44 @@ if ($SYNTAXHIGHLIGHTING):
 ?>
 		<link type="text/css" rel="stylesheet" href="css/prettify/prettify.css?<?php echo rawurlencode($VERSION); ?>" />
 <?php
-    if (strlen($SYNTAXHIGHLIGHTINGTHEME)):
+    if (!empty($SYNTAXHIGHLIGHTINGTHEME)):
 ?>
 		<link type="text/css" rel="stylesheet" href="css/prettify/<?php echo rawurlencode($SYNTAXHIGHLIGHTINGTHEME); ?>.css?<?php echo rawurlencode($VERSION); ?>" />
 <?php
     endif;
 endif;
 ?>
-		<script type="text/javascript" data-cfasync="false" src="js/jquery-3.7.0.js" integrity="sha512-3gJwYpMe3QewGELv8k/BX9vcqhryRdzRMxVfq6ngyWXwo03GFEzjsUm8Q7RZcHPHksttq7/GFoxjCVUjkjvPdw==" crossorigin="anonymous"></script>
+		<?php $this->_scriptTag('js/jquery-3.7.1.js', 'defer'); ?>
 <?php
 if ($QRCODE):
 ?>
-		<script async type="text/javascript" data-cfasync="false" src="js/kjua-0.9.0.js" integrity="sha512-CVn7af+vTMBd9RjoS4QM5fpLFEOtBCoB0zPtaqIDC7sF4F8qgUSRFQQpIyEDGsr6yrjbuOLzdf20tkHHmpaqwQ==" crossorigin="anonymous"></script>
+		<?php $this->_scriptTag('js/kjua-0.9.0.js', 'async'); ?>
 <?php
 endif;
 if ($ZEROBINCOMPATIBILITY):
 ?>
-		<script type="text/javascript" data-cfasync="false" src="js/base64-1.7.js" integrity="sha512-JdwsSP3GyHR+jaCkns9CL9NTt4JUJqm/BsODGmYhBcj5EAPKcHYh+OiMfyHbcDLECe17TL0hjXADFkusAqiYgA==" crossorigin="anonymous"></script>
+		<?php $this->_scriptTag('js/base64-1.7.js', 'async'); ?>
 <?php
 endif;
 ?>
-		<script type="text/javascript" data-cfasync="false" src="js/zlib-1.2.13.js" integrity="sha512-Lv4PCbSge8B4odE2blatgggJ/mkX1Ak21e7jL8mY3vzrVHS8FGsrEoqCrizxIJB4sW3T2w5Q+RG7hhUvp7+9tw==" crossorigin="anonymous"></script>
-		<script type="text/javascript" data-cfasync="false" src="js/base-x-4.0.0.js" integrity="sha512-nNPg5IGCwwrveZ8cA/yMGr5HiRS5Ps2H+s0J/mKTPjCPWUgFGGw7M5nqdnPD3VsRwCVysUh3Y8OWjeSKGkEQJQ==" crossorigin="anonymous"></script>
-		<script type="text/javascript" data-cfasync="false" src="js/rawinflate-0.3.js" integrity="sha512-g8uelGgJW9A/Z1tB6Izxab++oj5kdD7B4qC7DHwZkB6DGMXKyzx7v5mvap2HXueI2IIn08YlRYM56jwWdm2ucQ==" crossorigin="anonymous"></script>
+		<?php $this->_scriptTag('js/zlib-1.3.1.js', 'async'); ?>
+		<?php $this->_scriptTag('js/base-x-4.0.0.js', 'async'); ?>
+		<?php $this->_scriptTag('js/rawinflate-0.3.js', 'async'); ?>
 <?php
 if ($SYNTAXHIGHLIGHTING):
 ?>
-		<script type="text/javascript" data-cfasync="false" src="js/prettify.js?<?php echo rawurlencode($VERSION); ?>" integrity="sha512-puO0Ogy++IoA2Pb9IjSxV1n4+kQkKXYAEUtVzfZpQepyDPyXk8hokiYDS7ybMogYlyyEIwMLpZqVhCkARQWLMg==" crossorigin="anonymous"></script>
+		<?php $this->_scriptTag('js/prettify.js', 'async'); ?>
 <?php
 endif;
 if ($MARKDOWN):
 ?>
-		<script type="text/javascript" data-cfasync="false" src="js/showdown-2.1.0.js" integrity="sha512-WYXZgkTR0u/Y9SVIA4nTTOih0kXMEd8RRV6MLFdL6YU8ymhR528NLlYQt1nlJQbYz4EW+ZsS0fx1awhiQJme1Q==" crossorigin="anonymous"></script>
+		<?php $this->_scriptTag('js/showdown-2.1.0.js', 'async'); ?>
 <?php
 endif;
 ?>
-		<script type="text/javascript" data-cfasync="false" src="js/purify-3.0.4.js" integrity="sha512-N7H+3ylaOUeKuTX57cZoa42hqaG5w1rchG/IP9+BHd48W/vESgPDpb5QuDqzJE1dZhrGVCQgU8peIQGHmdGFhQ==" crossorigin="anonymous"></script>
-		<script type="text/javascript" data-cfasync="false" src="js/legacy.js?<?php echo rawurlencode($VERSION); ?>" integrity="sha512-LYos+qXHIRqFf5ZPNphvtTB0cgzHUizu2wwcOwcwz/VIpRv9lpcBgPYz4uq6jx0INwCAj6Fbnl5HoKiLufS2jg==" crossorigin="anonymous"></script>
-		<script type="text/javascript" data-cfasync="false" src="js/privatebin.js?<?php echo rawurlencode($VERSION); ?>" integrity="sha512-ykPMZuZDmyGNik7G5dIeqE/+CJ79OKZ0XzPPVWUwAzp+k8PQoP66J8F8zYtI53dM4ITLojkNKrv4vTv6E3bzFQ==" crossorigin="anonymous"></script>
+		<?php $this->_scriptTag('js/purify-3.2.3.js', 'async'); ?>
+		<?php $this->_scriptTag('js/legacy.js', 'async'); ?>
+		<?php $this->_scriptTag('js/privatebin.js', 'defer'); ?>
 		<!-- icon -->
 		<link rel="apple-touch-icon" href="img/apple-touch-icon.png?<?php echo rawurlencode($VERSION); ?>" sizes="180x180" />
 		<link rel="icon" type="image/png" href="img/favicon-32x32.png?<?php echo rawurlencode($VERSION); ?>" sizes="32x32" />
@@ -86,7 +86,7 @@ endif;
                 ?>
 				<br />
 <?php
-if (strlen($NOTICE)):
+if (!empty($NOTICE)):
 ?>
 				<span class="blink">▶</span> <?php echo I18n::encode($NOTICE);
 endif;
@@ -125,7 +125,7 @@ endif;
 				<div id="toolbar">
 					<button id="newbutton" class="reloadlink hidden"><img src="img/icon_new.png" width="11" height="15" alt="" /><?php echo I18n::_('New'); ?></button>
 					<button id="retrybutton" class="reloadlink hidden"><?php echo I18n::_('Retry'), PHP_EOL; ?></button>
-					<button id="sendbutton" class="hidden"><img src="img/icon_send.png" width="18" height="15" alt="" /><?php echo I18n::_('Send'); ?></button>
+					<button id="sendbutton" tabindex="2" class="hidden"><img src="img/icon_send.png" width="18" height="15" alt="" /><?php echo I18n::_('Create'); ?></button>
 					<button id="clonebutton" class="hidden"><img src="img/icon_clone.png" width="15" height="17" alt="" /><?php echo I18n::_('Clone'); ?></button>
 					<button id="rawtextbutton" class="hidden"><img src="img/icon_raw.png" width="15" height="15" alt="" /><?php echo I18n::_('Raw text'); ?></button>
 					<button id="downloadtextbutton" class="hidden"><?php echo I18n::_('Save paste'), PHP_EOL; ?></button>
@@ -203,7 +203,7 @@ endforeach;
 						</select>
 					</div>
 <?php
-if (strlen($LANGUAGESELECTION)):
+if (!empty($LANGUAGESELECTION)):
 ?>
 					<div id="language" class="button">
 						<select name="lang">
@@ -234,7 +234,7 @@ endif;
 					<div id="deletelink"></div>
 					<div id="pastelink"></div>
 <?php
-if (strlen($URLSHORTENER)):
+if (!empty($URLSHORTENER)):
 ?>
 					<button id="shortenbutton" data-shortener="<?php echo I18n::encode($URLSHORTENER); ?>"><img src="img/icon_shorten.png" width="13" height="15" /><?php echo I18n::_('Shorten URL'); ?></button>
 <?php
@@ -263,7 +263,11 @@ endif;
 					<pre id="prettyprint" class="prettyprint linenums:1"></pre>
 				</div>
 				<div id="plaintext" class="hidden"></div>
-				<textarea id="message" name="message" cols="80" rows="25" class="hidden"></textarea>
+				<textarea id="message" name="message" cols="80" rows="25" tabindex="1" class="hidden"></textarea>
+				<div class="button">
+					<input id="messagetab" type="checkbox" tabindex="3" checked="checked" />
+					<label for="messagetab"><?php echo I18n::_('Tabulator key serves as character (Hit <kbd>Ctrl</kbd>+<kbd>m</kbd> or <kbd>Esc</kbd> to toggle)'); ?></label>
+				</div>
 			</article>
 		</section>
 		<section>
@@ -277,9 +281,25 @@ if ($DISCUSSION):
 ?>
 		<div id="serverdata" class="hidden" aria-hidden="true">
 			<div id="templates">
-				<article id="commenttemplate" class="comment"><div class="commentmeta"><span class="nickname">name</span><span class="commentdate">0000-00-00</span></div><div class="commentdata">c</div><button class="btn btn-default btn-sm"><?php echo I18n::_('Reply'); ?></button></article>
-				<div id="commenttailtemplate" class="comment"><button class="btn btn-default btn-sm"><?php echo I18n::_('Add comment'); ?></button></div>
-				<div id="replytemplate" class="reply hidden"><input type="text" id="nickname" class="form-control" title="<?php echo I18n::_('Optional nickname…'); ?>" placeholder="<?php echo I18n::_('Optional nickname…'); ?>" /><textarea id="replymessage" class="replymessage form-control" cols="80" rows="7"></textarea><br /><div id="replystatus" role="alert" class="statusmessage hidden alert"><span class="glyphicon" aria-hidden="true"></span> </div><button id="replybutton" class="btn btn-default btn-sm"><?php echo I18n::_('Post comment'); ?></button></div>
+				<article id="commenttemplate" class="comment">
+					<div class="commentmeta">
+						<span class="nickname">name</span>
+						<span class="commentdate">0000-00-00</span>
+					</div>
+					<div class="commentdata">c</div>
+					<button class="btn btn-default btn-sm"><?php echo I18n::_('Reply'); ?></button>
+				</article>
+				<div id="commenttailtemplate" class="comment">
+					<button class="btn btn-default btn-sm"><?php echo I18n::_('Add comment'); ?></button>
+				</div>
+				<div id="replytemplate" class="reply hidden">
+					<input type="text" id="nickname" class="form-control" title="<?php echo I18n::_('Optional nickname…'); ?>" placeholder="<?php echo I18n::_('Optional nickname…'); ?>" />
+					<textarea id="replymessage" class="replymessage form-control" cols="80" rows="7"></textarea><br />
+					<div id="replystatus" role="alert" class="statusmessage hidden alert">
+						<span class="glyphicon" aria-hidden="true"></span>
+					</div>
+					<button id="replybutton" class="btn btn-default btn-sm"><?php echo I18n::_('Post comment'); ?></button>
+				</div>
 			</div>
 		</div>
 <?php

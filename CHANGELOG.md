@@ -1,11 +1,76 @@
 # PrivateBin version history
 
-## 1.6.1 (not yet released)
+## 1.7.6 (not yet released)
+* ADDED: Ability to copy the paste by clicking the copy icon button or using the keyboard shortcut ctrl+c/cmd+c (#1390 & #12)
+* CHANGED: Allow toggling tab-key-support using `[Ctrl]+[m]` or `[Esc]` in textarea for keyboard navigation (#1386)
+* CHANGED: Switched to WASM streaming and replace unsafe-eval with wasm-unsafe-eval CSP declaration (#1464), requires webserver to have `application/wasm` MIME type configured.
+* CHANGED: Replaced usage of strpos with str_starts_with & str_contains (#1373)
+* CHANGED: Added polyfill libraries for ctype, str_starts_with & str_contains functions (#1476)
+* CHANGED: Turned paste delete link into a button (#266)
+* CHANGED: Upgrading libraries to: DOMpurify 3.2.3, cloud-storage 1.45.0, aws-sdk-php 3.336.2
+* CHANGED: `bootstrap5` template UI improvements
+* FIXED: Redirect to the home page after changing the language (#92)
+
+## 1.7.5 (2024-11-16)
+* ADDED: Allow non persistent SQL connections, if configured (#1394)
+* ADDED: Show a button (that redirects to the `basepath` URL) inside the alert after a paste is deleted
+* CHANGED: Tweaked page footer of the `bootstrap5` template (#1392)
+* CHANGED: Simpler PostgreSQL table lookup query (#1361)
+* CHANGED: SRI hashes are now configurable, no longer hardcoded in templates (#1365)
+* CHANGED: Upgrading libraries to: DOMpurify 3.1.7, ip-lib 1.18.1, cloud-storage 1.43.0, aws-sdk-php 3.325.0
+* FIXED: Numeric array keys being cast to integer causing failures under strict type checking (#1435)
+
+## 1.7.4 (2024-07-09)
+* CHANGED: Saving markdown pastes uses `.md` extension instead of `.txt` (#1293)
+* CHANGED: Enable strict type checking in PHP (#1350)
+* CHANGED: Various tweaks of the `bootstrap5` template, suggested by the community
+* FIXED: Reset password input field on creation of new paste (#1194)
+* FIXED: Allow database schema upgrade to skip versions (#1343)
+* FIXED: `bootstrap5` dark mode toggle unset on dark browser preference (#1340)
+* FIXED: Prevent bypassing YOURLS proxy URL filter, allowing to shorten non-self URLs
+
+## 1.7.3 (2024-05-13)
+* CHANGED: Various tweaks of the `bootstrap5` template, suggested by the community
+* CHANGED: Upgrading libraries to: DOMpurify 3.1.3
+* FIXED: Selected expiration not being applied, when using bootstrap template (#1309)
+
+## 1.7.2 (2024-05-05)
+* ADDED: Allow use of `shortenviayourls` in query parameters (#1267)
+* ADDED: Input sanitation to some not yet filtered query and server parameters
+* ADDED: Optional Bootstrap CSS 5.3.3 based template, use configuration `template = "bootstrap5"` to switch to it (#728)
+* CHANGED: "Send" button now labeled "Create" (#946)
+* CHANGED: Drop some PHP < 5.6 fallbacks, minimum version is PHP 7.3 as of release 1.6.0
+* CHANGED: Set `lang` cookie with lax `SameSite` property
+* CHANGED: Upgrading libraries to: DOMpurify 3.1.2 (#1299) & jQuery 3.7.1
+* CHANGED: `create` attribute is no longer returned in API for pastes & can be disabled for comments using `discussiondatedisplay` as well (#1290)
+* FIXED: Add cache control headers also to API calls (#1263)
+* FIXED: Shortened paste URL does not appear in email (#606)
+
+## 1.7.1 (2024-02-11)
+* FIXED: zlib 1.3.1 wasm file reference
+
+## 1.7.0 (2024-02-11)
+* ADDED: Translations for Romanian
+* ADDED: Detect and report on damaged pastes (#1218)
+* CHANGED: Ask for confirmation, before loading burn after reading pastes (#1237)
+* CHANGED: Focus on password input in modal dialog
+* CHANGED: Upgrading libraries to: DOMpurify 3.0.8 & zlib 1.3.1
+* FIXED: Support more types of valid URLs for shorteners, incl. IDN ones (#1224)
+* FIXED: Email timezone buttons overlapping in some languages (#1039)
+* FIXED: Changing language mangles URL (#1191)
+* FIXED: Needless reload when visiting default URL
+
+## 1.6.2 (2023-12-15)
+* FIXED: English not selectable when `languageselection` enabled (#1208)
+* FIXED: SRI mismatch due to cached file having changed (#1207)
+
+## 1.6.1 (2023-12-04)
 * ADDED: Right-To-Left (RTL) support for Arabic & Hebrew (#1174)
+* CHANGED: Upgrading libraries to: DOMpurify 3.0.6
 
 ## 1.6.0 (2023-09-11)
 * ADDED: Translations for Japanese & Arabic
-* ADDED: Configuration option to disable Email button (#1164)
+* ADDED: Configuration option to disable email button (#1164)
 * CHANGED: Minimum required PHP version is 7.3, due to upgrading PHPunit (#707)
 * CHANGED: Removed PHP 5 polyfill for random_bytes()
 

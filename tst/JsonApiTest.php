@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 use PrivateBin\Controller;
@@ -180,7 +180,7 @@ class JsonApiTest extends TestCase
         $this->assertEquals(Helper::getPasteId(), $response['id'], 'outputs data correctly');
         $this->assertStringEndsWith('?' . $response['id'], $response['url'], 'returned URL points to new paste');
         $this->assertEquals($paste['ct'], $response['ct'], 'outputs data correctly');
-        $this->assertEquals($paste['meta']['created'], $response['meta']['created'], 'outputs postdate correctly');
+        $this->assertFalse(array_key_exists('created', $paste['meta']), 'does not output created');
         $this->assertEquals(0, $response['comment_count'], 'outputs comment_count correctly');
         $this->assertEquals(0, $response['comment_offset'], 'outputs comment_offset correctly');
     }
@@ -285,26 +285,39 @@ class JsonApiTest extends TestCase
 
     /**
      * @runInSeparateProcess
+     * @dataProvider baseUriProvider
      */
-    public function testShortenViaYourls()
+    public function testShortenViaYourls($baseUri)
     {
         $mock_yourls_service                = $this->_path . DIRECTORY_SEPARATOR . 'yourls.json';
         $options                            = parse_ini_file(CONF, true);
         $options['main']['basepath']        = 'https://example.com/path'; // missing slash gets added by Configuration constructor
-        $options['main']['urlshortener']    = 'https://example.com/path/shortenviayourls?link=';
+        $options['main']['urlshortener']    = 'https://example.com' . $baseUri . 'link=';
         $options['yourls']['apiurl']        = $mock_yourls_service;
         Helper::createIniFile(CONF, $options);
 
         // the real service answer is more complex, but we only look for the shorturl & statusCode
         file_put_contents($mock_yourls_service, '{"shorturl":"https:\/\/example.com\/1","statusCode":200}');
 
-        $_SERVER['REQUEST_URI'] = '/path/shortenviayourls?link=https%3A%2F%2Fexample.com%2Fpath%2F%3Ffoo%23bar';
+        $_SERVER['REQUEST_URI'] = $baseUri . 'link=https%3A%2F%2Fexample.com%2Fpath%2F%3Ffoo%23bar';
         $_GET['link']           = 'https://example.com/path/?foo#bar';
+        if (str_contains($baseUri, '?shortenviayourls')) {
+            $_GET['shortenviayourls'] = null;
+        }
         ob_start();
         new Controller;
         $content = ob_get_contents();
         ob_end_clean();
-        $this->assertStringContainsString('id="pasteurl" href="https://example.com/1"', $content, 'outputs shortened URL correctly');
+        $this->assertStringContainsString('id="pasteurl" href="https://example.com/1"', $content, "'{$baseUri}' outputs shortened URL correctly");
+    }
+
+    public function baseUriProvider()
+    {
+        return array(
+            array('/path/shortenviayourls?'),
+            array('/path/index.php/shortenviayourls?'),
+            array('/path?shortenviayourls&'),
+        );
     }
 
     /**
@@ -312,6 +325,9 @@ class JsonApiTest extends TestCase
      */
     public function testShortenViaYourlsFailure()
     {
+        $options                            = parse_ini_file(CONF, true);
+        $options['main']['basepath']        = 'https://example.com/path'; // missing slash gets added by Configuration constructor
+        Helper::createIniFile(CONF, $options);
         $_SERVER['REQUEST_URI'] = '/path/shortenviayourls?link=https%3A%2F%2Fexample.com%2Fpath%2F%3Ffoo%23bar';
         $_GET['link']           = 'https://example.com/path/?foo#bar';
         ob_start();

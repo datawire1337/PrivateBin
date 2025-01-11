@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /**
  * PrivateBin
  *
@@ -7,7 +7,6 @@
  * @link      https://github.com/PrivateBin/PrivateBin
  * @copyright 2012 Sébastien SAUVAGE (sebsauvage.net)
  * @license   https://www.opensource.org/licenses/zlib-license.php The zlib/libpng License
- * @version   1.6.0
  */
 
 namespace PrivateBin;
@@ -48,7 +47,7 @@ class YourlsProxy
      */
     public function __construct(Configuration $conf, $link)
     {
-        if (strpos($link, $conf->getKey('basepath') . '?') === false) {
+        if (!str_starts_with($link, $conf->getKey('basepath') . '?')) {
             $this->_error = 'Trying to shorten a URL that isn\'t pointing at our instance.';
             return;
         }

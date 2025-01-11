@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /**
  * PrivateBin
  *
@@ -7,7 +7,6 @@
  * @link      https://github.com/PrivateBin/PrivateBin
  * @copyright 2012 Sébastien SAUVAGE (sebsauvage.net)
  * @license   https://www.opensource.org/licenses/zlib-license.php The zlib/libpng License
- * @version   1.6.0
  */
 
 namespace PrivateBin\Data;
@@ -182,7 +181,7 @@ abstract class AbstractData
     protected function getOpenSlot(array &$comments, $postdate)
     {
         if (array_key_exists($postdate, $comments)) {
-            $parts = explode('.', $postdate, 2);
+            $parts = explode('.', (string) $postdate, 2);
             if (!array_key_exists(1, $parts)) {
                 $parts[1] = 0;
             }

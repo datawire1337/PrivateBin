@@ -1,15 +1,15 @@
-<?php
+<?php declare(strict_types=1);
 /**
- * S3.php
+ * PrivateBin
  *
- * an S3 compatible data backend for PrivateBin with CEPH/RadosGW in mind
- * see https://docs.ceph.com/en/latest/radosgw/s3/php/
- * based on lib/Data/GoogleCloudStorage.php from PrivateBin version 1.6.0
+ * a zero-knowledge paste bin
  *
  * @link      https://github.com/PrivateBin/PrivateBin
  * @copyright 2022 Felix J. Ogris (https://ogris.de/)
  * @license   https://www.opensource.org/licenses/zlib-license.php The zlib/libpng License
- * @version   1.4.1
+ *
+ * an S3 compatible data backend for PrivateBin with CEPH/RadosGW in mind
+ * see https://docs.ceph.com/en/latest/radosgw/s3/php/
  *
  * Installation:
  *   1. Make sure you have composer.lock and composer.json in the document root of your PasteBin
@@ -78,7 +78,6 @@ class S3Storage extends AbstractData
      *
      * @access public
      * @param array $options
-     * @return
      */
     public function __construct(array $options)
     {
@@ -463,7 +462,7 @@ class S3Storage extends AbstractData
         try {
             foreach ($this->_listAllObjects($prefix) as $object) {
                 $candidate = substr($object['Key'], strlen($prefix));
-                if (strpos($candidate, '/') === false) {
+                if (!str_contains($candidate, '/')) {
                     $pastes[] = $candidate;
                 }
             }

@@ -28,11 +28,6 @@ docker run --rm --read-only -v ~/PrivateBin:/srv:ro privatebin/unit-testing phpu
 docker run --rm --read-only -v ~/PrivateBin:/srv:ro privatebin/unit-testing mocha
 ```
 
-We also provide a Janitor image that includes the  Cloud9  and Theia WebIDEs as
-well as the integrated unit testing utilities. See our [docker wiki
-page](https://github.com/PrivateBin/PrivateBin/wiki/Docker#janitor-image-with-cloud9-and-theia-webide-janitortechnologyprivatebin)
-for further details on this.
-
 ## Running PHP Unit Tests
 
 In order to run these tests, you will need to install the following packages
@@ -48,6 +43,14 @@ Example for Debian and Ubuntu:
 $ sudo apt install phpunit php-gd php-sqlite3 php-xdebug
 ```
 
+Because the unit tests depend on this, you also need to install the optional. Otherwise they won't run:
+```console
+composer require google/cloud-storage
+```
+
+If you do this and want to develop further, please go into `.gitignore` and adjust it to ignore the whole
+vendor directory. Otherwise your `git status` will be filled with lot's of unrelated PHP files.
+
 To run the tests, change into the `tst` directory and run phpunit:
 
 ```console
@@ -61,17 +64,14 @@ configurations defined in its constructor, it generates the unit test file
 of these configurations and tests for (most of the) valid combinations. Some of
 combinations can't be tested with this method, i.e. a valid option combined with
 an invalid one. Other very specific test cases (i.e. to trigger multiple errors)
-are covered in `tst/PrivateBinTest.php`. Here is how to generate the
+are covered in `tst/ControllerTest.php`. Here is how to generate the
 configuration test and run it:
 
 ```console
 $ cd PrivateBin/tst
-$ php ConfigurationTestGenerator.php
+$ ../bin/configuration-test-generator
 $ phpunit ConfigurationCombinationsTest.php
 ```
-
-Note that it can take an hour or longer to run the several thousand tests.
-
 
 ## Running JavaScript Unit Tests
 
@@ -134,7 +134,7 @@ associated random number generator (RNG) state, so you can reproduce it easily:
   1 failing
 
   1) Helper getCookie returns the requested cookie:
-     Error: Failed after 30 tests and 11 shrinks. rngState: 88caf85079d32e416b; Counterexample: ["{", "9", "9", "YD8%fT"]; [" ", "_|K:"]; 
+     Error: Failed after 30 tests and 11 shrinks. rngState: 88caf85079d32e416b; Counterexample: ["{", "9", "9", "YD8%fT"]; [" ", "_|K:"];
 
 [...]
 ```

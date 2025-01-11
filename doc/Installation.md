@@ -22,6 +22,7 @@ for more information.
 ### Minimal Requirements
 
 - PHP version 7.3 or above
+- ctype extension
 - GD extension (when using identicon or vizhash icons, jdenticon works without it)
 - zlib extension
 - some disk space or a database supported by [PDO](https://php.net/manual/book.pdo.php)
@@ -169,14 +170,13 @@ user these additional privileges:
 
 For reference or if you want to create the table schema for yourself to avoid
 having to give PrivateBin too many permissions (replace `prefix_` with your own
-table prefix and create the table schema with your favourite MariaDB/MySQL
+table prefix and create the table schema with your favorite MariaDB/MySQL
 client):
 
 ```sql
 CREATE TABLE prefix_paste (
     dataid CHAR(16) NOT NULL,
     data MEDIUMBLOB,
-    postdate INT,
     expiredate INT,
     opendiscussion INT,
     burnafterreading INT,
@@ -201,7 +201,7 @@ CREATE INDEX parent ON prefix_comment(pasteid);
 CREATE TABLE prefix_config (
     id CHAR(16) NOT NULL, value TEXT, PRIMARY KEY (id)
 );
-INSERT INTO prefix_config VALUES('VERSION', '1.6.0');
+INSERT INTO prefix_config VALUES('VERSION', '1.7.5');
 ```
 
 In **PostgreSQL**, the `data`, `attachment`, `nickname` and `vizhash` columns
@@ -213,11 +213,30 @@ to be `CLOB` and not `BLOB` or `MEDIUMBLOB`, the `id` column in the `config`
 table needs to be `VARCHAR2(16)` and the `meta` column in the `paste` table
 and the `value` column in the `config` table need to be `VARCHAR2(4000)`.
 
+### Cloud Storage Backends
+
+Due to the large size of the respective cloud SDKs required for these, we didn't
+include these in the `vendor` directory shipped in our release archives. To use
+these in your manual installation, you will need [composer installed](https://getcomposer.org/)
+and require the used library (see instructions below).
+
+This is not required if using the dedicated container images that have these SDKs
+preinstalled.
+
 #### Using Google Cloud Storage
 If you want to deploy PrivateBin in a serverless manner in the Google Cloud, you
-can choose the `GoogleCloudStorage` as backend. To use this backend, you create
-a GCS bucket and specify the name as the model option `bucket`. Alternatively,
-you can set the name through the environment variable `PRIVATEBIN_GCS_BUCKET`.
+can choose the `GoogleCloudStorage` as backend.
+
+To use this backend, you first have to install the SDK from the installation
+directory of PrivateBin:
+
+```console
+composer require --no-update google/cloud-storage
+composer update --no-dev --optimize-autoloader
+```
+
+You have to create a GCS bucket and specify the name as the model option `bucket`.
+Alternatively, you can set the name through the environment variable `PRIVATEBIN_GCS_BUCKET`.
 
 The default prefix for pastes stored in the bucket is `pastes`. To change the
 prefix, specify the option `prefix`.
@@ -226,15 +245,20 @@ Google Cloud Storage buckets may be significantly slower than a `FileSystem` or
 `Database` backend. The big advantage is that the deployment on Google Cloud
 Platform using Google Cloud Run is easy and cheap.
 
-To use the Google Cloud Storage backend you have to install the suggested
-library using the command `composer require google/cloud-storage`.
-
 #### Using S3 Storage
 Similar to Google Cloud Storage, you can choose S3 as storage backend. It uses
-the AWS SDK for PHP, but can also talk to a Rados gateway as part of a CEPH
-cluster. To use this backend, you first have to install the SDK in the
-document root of PrivateBin: `composer require aws/aws-sdk-php`. You have to
-create the S3 bucket on the CEPH cluster before using the S3 backend.
+the AWS SDK for PHP, but can also talk to a Rados gateway as part of a Ceph
+cluster.
+
+To use this backend, you first have to install the SDK from the installation
+directory of PrivateBin:
+
+```console
+composer require --no-update aws/aws-sdk-php
+composer update --no-dev --optimize-autoloader
+```
+
+You have to create an S3 bucket on the Ceph cluster before using the S3 backend.
 
 In the `[model]` section of cfg/conf.php, set `class` to `S3Storage`.
 
@@ -256,7 +280,7 @@ data beneath this prefix.
 For AWS, you have to provide at least `region`, `bucket`, `accesskey`, and
 `secretkey`.
 
-For CEPH, follow this example:
+For Ceph, follow this example:
 
 ```
 region = ""

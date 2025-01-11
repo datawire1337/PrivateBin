@@ -16,11 +16,18 @@ jobs:
       run: composer install --prefer-dist --no-dev
 
   PHPunit:
+    name: PHP ${{ matrix.php-versions }} unit tests on ${{ matrix.operating-system }}
     runs-on: ubuntu-latest
+    # https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs#handling-failures
+    continue-on-error: "${{ matrix.experimental }}"
     strategy:
       matrix:
-        php-versions: ['7.3', '7.4', '8.0', '8.1', '8.2']
-    name: PHP ${{ matrix.php-versions }} unit tests on ${{ matrix.operating-system }}
+        php-versions: ['7.3', '7.4', '8.0', '8.1', '8.2', '8.3', '8.4']
+        experimental: [false]
+# uncomment this to start testing on development release
+#        include:
+#          - php-versions: '8.5' # development release, things can break
+#            experimental: true
     env:
       extensions: gd, sqlite3
       extensions-cache-key-name: phpextensions
@@ -41,7 +48,7 @@ jobs:
         key: ${{ runner.os }}-${{ env.extensions-cache-key }}
 
     - name: Cache extensions
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{ steps.extcache.outputs.dir }}
         key: ${{ steps.extcache.outputs.key }}
@@ -76,13 +83,16 @@ jobs:
       shell: bash
 
     - name: Cache dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
-        path: ${{ steps.composer-cache.outputs.dir }}
-        key: ${{ runner.os }}-composer-${{ steps.get-date.outputs.date }}-${{ hashFiles('**/composer.json') }}
-        restore-keys: ${{ runner.os }}-composer-${{ steps.get-date.outputs.date }}-
+        path: "${{ steps.composer-cache.outputs.dir }}"
+        key: "${{ runner.os }}-composer-${{ steps.get-date.outputs.date }}-${{ hashFiles('**/composer.json') }}"
+        restore-keys: "${{ runner.os }}-composer-${{ steps.get-date.outputs.date }}-"
 
     # composer installation
+    - name: Unset platform requirement
+      run: composer config --unset platform
+
     - name: Setup PHPunit
       run: composer install -n
 
@@ -91,8 +101,15 @@ jobs:
 
     # testing
     - name: Run unit tests
-      run: ../vendor/bin/phpunit --no-coverage
+      run: ../vendor/bin/phpunit --no-coverage --log-junit results.xml
       working-directory: tst
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Test Results (PHP ${{ matrix.php-versions }})
+        path: tst/results.xml
 
   Mocha:
     runs-on: ubuntu-latest
@@ -116,5 +133,22 @@ jobs:
       working-directory: js
 
     - name: Run unit tests
-      run: npm test
+      run: npm run ci-test
       working-directory: js
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Test Results (Mocha)
+        path: js/mocha-results.xml
+
+  event_file:
+    name: "Event File"
+    runs-on: ubuntu-latest
+    steps:
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: Event File
+        path: "${{ github.event_path }}"

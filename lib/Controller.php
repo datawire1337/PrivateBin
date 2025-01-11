@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /**
  * PrivateBin
  *
@@ -7,7 +7,6 @@
  * @link      https://github.com/PrivateBin/PrivateBin
  * @copyright 2012 Sébastien SAUVAGE (sebsauvage.net)
  * @license   https://www.opensource.org/licenses/zlib-license.php The zlib/libpng License
- * @version   1.6.0
  */
 
 namespace PrivateBin;
@@ -28,7 +27,7 @@ class Controller
      *
      * @const string
      */
-    const VERSION = '1.6.0';
+    const VERSION = '1.7.5';
 
     /**
      * minimal required PHP version
@@ -67,6 +66,14 @@ class Controller
      * @var    string
      */
     private $_status = '';
+
+    /**
+     * status message
+     *
+     * @access private
+     * @var    bool
+     */
+    private $_is_deleted = false;
 
     /**
      * JSON message
@@ -111,10 +118,12 @@ class Controller
     public function __construct()
     {
         if (version_compare(PHP_VERSION, self::MIN_PHP_VERSION) < 0) {
-            throw new Exception(I18n::_('%s requires php %s or above to work. Sorry.', I18n::_('PrivateBin'), self::MIN_PHP_VERSION), 1);
+            error_log(I18n::_('%s requires php %s or above to work. Sorry.', I18n::_('PrivateBin'), self::MIN_PHP_VERSION));
+            return;
         }
         if (strlen(PATH) < 0 && substr(PATH, -1) !== DIRECTORY_SEPARATOR) {
-            throw new Exception(I18n::_('%s requires the PATH to end in a "%s". Please update the PATH in your index.php.', I18n::_('PrivateBin'), DIRECTORY_SEPARATOR), 5);
+            error_log(I18n::_('%s requires the PATH to end in a "%s". Please update the PATH in your index.php.', I18n::_('PrivateBin'), DIRECTORY_SEPARATOR));
+            return;
         }
 
         // load config from ini file, initialize required classes
@@ -141,12 +150,16 @@ class Controller
                 break;
         }
 
+        $this->_setCacheHeaders();
+
         // output JSON or HTML
         if ($this->_request->isJsonApiCall()) {
             header('Content-type: ' . Request::MIME_JSON);
             header('Access-Control-Allow-Origin: *');
             header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
             header('Access-Control-Allow-Headers: X-Requested-With, Content-Type');
+            header('X-Uncompressed-Content-Length: ' . strlen($this->_json));
+            header('Access-Control-Expose-Headers: X-Uncompressed-Content-Length');
             echo $this->_json;
         } else {
             $this->_view();
@@ -172,8 +185,24 @@ class Controller
         // force default language, if language selection is disabled and a default is set
         if (!$this->_conf->getKey('languageselection') && strlen($lang) == 2) {
             $_COOKIE['lang'] = $lang;
-            setcookie('lang', $lang, 0, '', '', true);
+            setcookie('lang', $lang, array('SameSite' => 'Lax', 'Secure' => true));
         }
+    }
+
+    /**
+     * Turn off browser caching
+     *
+     * @access private
+     */
+    private function _setCacheHeaders()
+    {
+        // set headers to disable caching
+        $time = gmdate('D, d M Y H:i:s \G\M\T');
+        header('Cache-Control: no-store, no-cache, no-transform, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: ' . $time);
+        header('Last-Modified: ' . $time);
+        header('Vary: Accept');
     }
 
     /**
@@ -250,7 +279,14 @@ class Controller
         }
         // The user posts a standard paste.
         else {
-            $this->_model->purge();
+            try {
+                $this->_model->purge();
+            } catch (Exception $e) {
+                error_log('Error purging pastes: ' . $e->getMessage() . PHP_EOL .
+                    'Use the administration scripts statistics to find ' .
+                    'damaged paste IDs and either delete them or restore them ' .
+                    'from backup.');
+            }
             $paste = $this->_model->getPaste();
             try {
                 $paste->setData($data);
@@ -280,7 +316,8 @@ class Controller
                 if (hash_equals($paste->getDeleteToken(), $deletetoken)) {
                     // Paste exists and deletion token is valid: Delete the paste.
                     $paste->delete();
-                    $this->_status = 'Paste was properly deleted.';
+                    $this->_status     = 'Paste was properly deleted.';
+                    $this->_is_deleted = true;
                 } else {
                     $this->_error = 'Wrong deletion token. Paste was not deleted.';
                 }
@@ -291,10 +328,10 @@ class Controller
             $this->_error = $e->getMessage();
         }
         if ($this->_request->isJsonApiCall()) {
-            if (strlen($this->_error)) {
-                $this->_return_message(1, $this->_error);
-            } else {
+            if (empty($this->_error)) {
                 $this->_return_message(0, $dataid);
+            } else {
+                $this->_return_message(1, $this->_error);
             }
         }
     }
@@ -334,13 +371,6 @@ class Controller
      */
     private function _view()
     {
-        // set headers to disable caching
-        $time = gmdate('D, d M Y H:i:s \G\M\T');
-        header('Cache-Control: no-store, no-cache, no-transform, must-revalidate');
-        header('Pragma: no-cache');
-        header('Expires: ' . $time);
-        header('Last-Modified: ' . $time);
-        header('Vary: Accept');
         header('Content-Security-Policy: ' . $this->_conf->getKey('cspheader'));
         header('Cross-Origin-Resource-Policy: same-origin');
         header('Cross-Origin-Embedder-Policy: require-corp');
@@ -367,7 +397,7 @@ class Controller
         $languageselection = '';
         if ($this->_conf->getKey('languageselection')) {
             $languageselection = I18n::getLanguage();
-            setcookie('lang', $languageselection, 0, '', '', true);
+            setcookie('lang', $languageselection, array('SameSite' => 'Lax', 'Secure' => true));
         }
 
         // strip policies that are unsupported in meta tag
@@ -391,6 +421,7 @@ class Controller
         }
         $page->assign('BASEPATH', I18n::_($this->_conf->getKey('basepath')));
         $page->assign('STATUS', I18n::_($this->_status));
+        $page->assign('ISDELETED', I18n::_(json_encode($this->_is_deleted)));
         $page->assign('VERSION', self::VERSION);
         $page->assign('DISCUSSION', $this->_conf->getKey('discussion'));
         $page->assign('OPENDISCUSSION', $this->_conf->getKey('opendiscussion'));
@@ -415,6 +446,7 @@ class Controller
         $page->assign('HTTPWARNING', $this->_conf->getKey('httpwarning'));
         $page->assign('HTTPSLINK', 'https://' . $this->_request->getHost() . $this->_request->getRequestUri());
         $page->assign('COMPRESSION', $this->_conf->getKey('compression'));
+        $page->assign('SRI', $this->_conf->getSection('sri'));
         $page->draw($this->_conf->getKey('template'));
     }
 

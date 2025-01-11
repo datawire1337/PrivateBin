@@ -6,7 +6,6 @@
  * @see       {@link https://github.com/PrivateBin/PrivateBin}
  * @copyright 2012 Sébastien SAUVAGE ({@link http://sebsauvage.net})
  * @license   {@link https://www.opensource.org/licenses/zlib-license.php The zlib/libpng License}
- * @version   1.6.0
  * @name      PrivateBin
  * @namespace
  */
@@ -78,9 +77,16 @@ jQuery.PrivateBin = (function($, RawDeflate) {
     };
 
     /**
+     * URL fragment prefix requiring load confirmation
+     *
+     * @private
+     */
+    const loadConfirmPrefix = '#-';
+
+    /**
      * CryptoData class
      *
-     * bundles helper fuctions used in both paste and comment formats
+     * bundles helper functions used in both paste and comment formats
      *
      * @name CryptoData
      * @class
@@ -95,7 +101,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         /**
          * gets the cipher data (cipher text + adata)
          *
-         * @name Paste.getCipherData
+         * @name CryptoData.getCipherData
          * @function
          * @return {Array}|{string}
          */
@@ -108,7 +114,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
     /**
      * Paste class
      *
-     * bundles helper fuctions around the paste formats
+     * bundles helper functions around the paste formats
      *
      * @name Paste
      * @class
@@ -171,7 +177,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
     /**
      * Comment class
      *
-     * bundles helper fuctions around the comment formats
+     * bundles helper functions around the comment formats
      *
      * @name Comment
      * @class
@@ -183,19 +189,19 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         /**
          * gets the UNIX timestamp of the comment creation
          *
-         * @name Paste.getCreated
+         * @name Comment.getCreated
          * @function
          * @return {int}
          */
         this.getCreated = function()
         {
-            return this.meta[this.v === 1 ? 'postdate' : 'created'];
+            return this.meta[this.v === 1 ? 'postdate' : 'created'] || 0;
         }
 
         /**
          * gets the icon of the comment submitter
          *
-         * @name Paste.getIcon
+         * @name Comment.getIcon
          * @function
          * @return {string}
          */
@@ -228,7 +234,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             '<': '&lt;',
             '>': '&gt;',
             '"': '&quot;',
-            "'": '&#39;',
+            '\'': '&#39;',
             '/': '&#x2F;',
             '`': '&#x60;',
             '=': '&#x3D;'
@@ -627,7 +633,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
          * @prop   {string[]}
          * @readonly
          */
-        const supportedLanguages = ['ar', 'bg', 'ca', 'co', 'cs', 'de', 'el', 'es', 'et', 'fi', 'fr', 'he', 'hu', 'id', 'it', 'ja', 'jbo', 'lt', 'no', 'nl', 'pl', 'pt', 'oc', 'ru', 'sk', 'sl', 'th', 'tr', 'uk', 'zh'];
+        const supportedLanguages = ['ar', 'bg', 'ca', 'co', 'cs', 'de', 'el', 'es', 'et', 'fi', 'fr', 'he', 'hu', 'id', 'it', 'ja', 'jbo', 'lt', 'no', 'nl', 'pl', 'pt', 'oc', 'ro', 'ru', 'sk', 'sl', 'th', 'tr', 'uk', 'zh'];
 
         /**
          * built in language
@@ -751,14 +757,14 @@ jQuery.PrivateBin = (function($, RawDeflate) {
                 args[0] = translations[messageId];
             }
 
-            // messageID may contain links, but should be from a trusted source (code or translation JSON files)
-            let containsLinks = args[0].indexOf('<a') !== -1;
+            // messageID may contain HTML, but should be from a trusted source (code or translation JSON files)
+            let containsHtml = isStringContainsHtml(args[0]);
 
             // prevent double encoding, when we insert into a text node
-            if (containsLinks || $element === null) {
+            if (containsHtml || $element === null) {
                 for (let i = 0; i < args.length; ++i) {
                     // parameters (i > 0) may never contain HTML as they may come from untrusted parties
-                    if ((containsLinks ? i > 1 : i > 0) || !containsLinks) {
+                    if ((containsHtml ? i > 1 : i > 0) || !containsHtml) {
                         args[i] = Helper.htmlEntities(args[i]);
                     }
                 }
@@ -766,11 +772,11 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             // format string
             let output = Helper.sprintf.apply(this, args);
 
-            if (containsLinks) {
+            if (containsHtml) {
                 // only allow tags/attributes we actually use in translations
                 output = DOMPurify.sanitize(
                     output, {
-                        ALLOWED_TAGS: ['a', 'i', 'span'],
+                        ALLOWED_TAGS: ['a', 'i', 'span', 'kbd'],
                         ALLOWED_ATTR: ['href', 'id']
                     }
                 );
@@ -778,7 +784,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
 
             // if $element is given, insert translation
             if ($element !== null) {
-                if (containsLinks) {
+                if (containsHtml) {
                     $element.html(output);
                 } else {
                     // text node takes care of entity encoding
@@ -836,6 +842,8 @@ jQuery.PrivateBin = (function($, RawDeflate) {
                     return n % 10 === 1 && n % 100 !== 11 ? 0 : ((n % 10 >= 2 && n % 100 < 10 || n % 100 >= 20) ? 1 : 2);
                 case 'pl':
                     return n === 1 ? 0 : (n % 10 >= 2 && n %10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? 1 : 2);
+                case 'ro':
+                    return n === 1 ? 0 : ((n === 0 || (n % 100 > 0 && n % 100 < 20)) ? 1 : 2);
                 case 'ru':
                 case 'uk':
                     return n % 10 === 1 && n % 100 !== 11 ? 0 : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? 1 : 2);
@@ -905,6 +913,25 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             language = mockLanguage || null;
             translations = mockTranslations || {};
         };
+
+        /**
+         * Check if string contains valid HTML code
+         *
+         * @name I18n.isStringContainsHtml
+         * @function
+         * @private
+         * @param {string} messageId
+         * @returns {boolean}
+         */
+        function isStringContainsHtml(messageId) {
+            // An integer which specifies the type of the node. An Element node like <p> or <div>.
+            const elementNodeType = 1;
+
+            const div = document.createElement('div');
+            div.innerHTML = messageId;
+
+            return Array.from(div.childNodes).some(node => node.nodeType === elementNodeType);
+        }
 
         return me;
     })();
@@ -1059,7 +1086,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             if (mode === 'zlib' || mode === 'none') {
                 if (mode === 'zlib') {
                     if (typeof zlib === 'undefined') {
-                        throw 'Error decompressing paste, due to missing WebAssembly support.'
+                        throw 'Error decompressing paste, your browser does not support WebAssembly. Please use another browser to view this paste.'
                     }
                     data = zlib.inflate(
                         new Uint8Array(data)
@@ -1296,7 +1323,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             spec[1] = atob(spec[1]);
             if (spec[7] === 'zlib') {
                 if (typeof zlib === 'undefined') {
-                    throw 'Error decompressing paste, due to missing WebAssembly support.'
+                    throw 'Error decompressing paste, your browser does not support WebAssembly. Please use another browser to view this paste.'
                 }
             }
             try {
@@ -1512,10 +1539,11 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         me.getPasteKey = function()
         {
             if (symmetricKey === null) {
-                let newKey = window.location.hash.substring(1);
-                if (newKey === '') {
-                    throw 'no encryption key given';
+                let startPos = 1;
+                if(window.location.hash.startsWith(loadConfirmPrefix)) {
+                    startPos = loadConfirmPrefix.length;
                 }
+                let newKey = window.location.hash.substring(startPos);
 
                 // Some web 2.0 services and redirectors add data AFTER the anchor
                 // (such as &utm_source=...). We will strip any additional data.
@@ -1523,6 +1551,9 @@ jQuery.PrivateBin = (function($, RawDeflate) {
                 if (ampersandPos > -1)
                 {
                     newKey = newKey.substring(0, ampersandPos);
+                }
+                if (newKey === '') {
+                    throw 'no encryption key given';
                 }
 
                 // version 2 uses base58, version 1 uses base64 without decoding
@@ -2035,29 +2066,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
                 xhrFields: {
                     withCredentials: false
                 },
-                success: function(response) {
-                    let responseString = response;
-                    if (typeof responseString === 'object') {
-                        responseString = JSON.stringify(responseString);
-                    }
-                    if (typeof responseString === 'string' && responseString.length > 0) {
-                        const shortUrlMatcher = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/g;
-                        const shortUrl = (responseString.match(shortUrlMatcher) || []).sort(function(a, b) {
-                            return a.length - b.length;
-                        })[0];
-                        if (typeof shortUrl === 'string' && shortUrl.length > 0) {
-                            // we disable the button to avoid calling shortener again
-                            $shortenButton.addClass('buttondisabled');
-                            // update link
-                            $pasteUrl.text(shortUrl);
-                            $pasteUrl.prop('href', shortUrl);
-                            // we pre-select the link so that the user only has to [Ctrl]+[c] the link
-                            Helper.selectText($pasteUrl[0]);
-                            return;
-                        }
-                    }
-                    Alert.showError('Cannot parse response from URL shortener.');
-                }
+                success: PasteStatus.extractUrl
             })
             .fail(function(data, textStatus, errorThrown) {
                 console.error(textStatus, errorThrown);
@@ -2102,7 +2111,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         {
             I18n._(
                 $('#pastelink'),
-                'Your paste is <a id="pasteurl" href="%s">%s</a> <span id="copyhint">(Hit [Ctrl]+[c] to copy)</span>',
+                'Your paste is <a id="pasteurl" href="%s">%s</a> <span id="copyhint">(Hit <kbd>Ctrl</kbd>+<kbd>c</kbd> to copy)</span>',
                 url, url
             );
             // save newly created element
@@ -2111,8 +2120,8 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             $pasteUrl.click(pasteLinkClick);
 
             // delete link
-            $('#deletelink').html('<a href="' + deleteUrl + '"></a>');
-            I18n._($('#deletelink a').first(), 'Delete data');
+            $('#deletelink').attr('href', deleteUrl);
+            I18n._($('#deletelink span').not('.glyphicon').first(), 'Delete data');
 
             // enable shortener button
             $shortenButton.removeClass('buttondisabled');
@@ -2121,6 +2130,50 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             $pasteSuccess.removeClass('hidden');
             // we pre-select the link so that the user only has to [Ctrl]+[c] the link
             Helper.selectText($pasteUrl[0]);
+        };
+
+        /**
+         * extracts URLs from given string
+         *
+         * if at least one is found, it disables the shortener button and
+         * replaces the paste URL
+         *
+         * @name   PasteStatus.extractUrl
+         * @function
+         * @param  {string} response
+         */
+        me.extractUrl = function(response)
+        {
+            if (typeof response === 'object') {
+                response = JSON.stringify(response);
+            }
+            if (typeof response === 'string' && response.length > 0) {
+                const shortUrlMatcher = /https?:\/\/[^\s"<]+/g; // JSON API will have URL in quotes, XML in tags
+                const shortUrl = (response.match(shortUrlMatcher) || []).filter(function(urlRegExMatch) {
+                    if (typeof URL.canParse === 'function') {
+                        return URL.canParse(urlRegExMatch);
+                    }
+                    // polyfill for older browsers (< 120) & node (< 19.9 & < 18.17)
+                    try {
+                        return !!new URL(urlRegExMatch);
+                    } catch (error) {
+                        return false;
+                    }
+                }).sort(function(a, b) {
+                    return a.length - b.length; // shortest first
+                })[0];
+                if (typeof shortUrl === 'string' && shortUrl.length > 0) {
+                    // we disable the button to avoid calling shortener again
+                    $shortenButton.addClass('buttondisabled');
+                    // update link
+                    $pasteUrl.text(shortUrl);
+                    $pasteUrl.prop('href', shortUrl);
+                    // we pre-select the link so that the user only has to [Ctrl]+[c] the link
+                    Helper.selectText($pasteUrl[0]);
+                    return;
+                }
+            }
+            Alert.showError('Cannot parse response from URL shortener.');
         };
 
         /**
@@ -2203,8 +2256,8 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         const me = {};
 
         let $passwordDecrypt,
-            $passwordForm,
             $passwordModal,
+            bootstrap5PasswordModal = null,
             password = '';
 
         /**
@@ -2223,9 +2276,45 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             password = $passwordDecrypt.val();
 
             // hide modal
-            $passwordModal.modal('hide');
+            if (bootstrap5PasswordModal) {
+                bootstrap5PasswordModal.hide();
+            } else {
+                $passwordModal.modal('hide');
+            }
 
             PasteDecrypter.run();
+        }
+
+        /**
+         * Request users confirmation to load possibly burn after reading paste
+         *
+         * @name   Prompt.requestLoadConfirmation
+         * @function
+         */
+        me.requestLoadConfirmation = function()
+        {
+            const $loadconfirmmodal = $('#loadconfirmmodal');
+            if ($loadconfirmmodal.length > 0) {
+                const $loadconfirmOpenNow = $loadconfirmmodal.find('#loadconfirm-open-now');
+                $loadconfirmOpenNow.off('click.loadPaste');
+                $loadconfirmOpenNow.on('click.loadPaste', PasteDecrypter.run);
+                const $loadconfirmClose = $loadconfirmmodal.find('.close');
+                $loadconfirmClose.off('click.close');
+                $loadconfirmClose.on('click.close', Controller.newPaste);
+                if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip.VERSION) {
+                    (new bootstrap.Modal($loadconfirmmodal[0])).show();
+                } else {
+                    $loadconfirmmodal.modal('show');
+                }
+            } else {
+                if (window.confirm(
+                    I18n._('This secret message can only be displayed once. Would you like to see it now?')
+                )) {
+                    PasteDecrypter.run();
+                } else {
+                    Controller.newPaste();
+                }
+            }
         }
 
         /**
@@ -2238,10 +2327,11 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         {
             // show new bootstrap method (if available)
             if ($passwordModal.length !== 0) {
-                $passwordModal.modal({
-                    backdrop: 'static',
-                    keyboard: false
-                });
+                if (bootstrap5PasswordModal) {
+                    bootstrap5PasswordModal.show();
+                } else {
+                    $passwordModal.modal('show');
+                }
                 return;
             }
 
@@ -2285,7 +2375,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
 
             // and also reset UI
             $passwordDecrypt.val('');
-        }
+        };
 
         /**
          * init status manager
@@ -2298,17 +2388,26 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         me.init = function()
         {
             $passwordDecrypt = $('#passworddecrypt');
-            $passwordForm = $('#passwordform');
             $passwordModal = $('#passwordmodal');
 
-            // bind events
+            // bind events - handle Model password submission
+            if ($passwordModal.length !== 0) {
+                $('#passwordform').submit(submitPasswordModal);
 
-            // focus password input when it is shown
-            $passwordModal.on('shown.bs.Model', function () {
-                $passwordDecrypt.focus();
-            });
-            // handle Model password submission
-            $passwordForm.submit(submitPasswordModal);
+                const disableClosingConfig = {
+                    backdrop: 'static',
+                    keyboard: false,
+                    show: false
+                };
+                if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip.VERSION) {
+                    bootstrap5PasswordModal = new bootstrap.Modal($passwordModal[0], disableClosingConfig);
+                } else {
+                    $passwordModal.modal(disableClosingConfig);
+                }
+                $passwordModal.on('shown.bs.modal', () => {
+                    $passwordDecrypt.focus();
+                });
+            }
         };
 
         return me;
@@ -2327,9 +2426,14 @@ jQuery.PrivateBin = (function($, RawDeflate) {
 
         let $editorTabs,
             $messageEdit,
+            $messageEditParent,
             $messagePreview,
+            $messagePreviewParent,
+            $messageTab,
+            $messageTabParent,
             $message,
-            isPreview = false;
+            isPreview = false,
+            isTabSupported = true;
 
         /**
          * support input of tab character
@@ -2341,9 +2445,13 @@ jQuery.PrivateBin = (function($, RawDeflate) {
          */
         function supportTabs(event)
         {
-            const keyCode = event.keyCode || event.which;
-            // tab was pressed
-            if (keyCode === 9) {
+            // support disabling tab support using [Esc] and [Ctrl]+[m]
+            if (event.key === 'Escape' || (event.ctrlKey && event.key === 'm')) {
+                toggleTabSupport();
+                $messageTab[0].checked = isTabSupported;
+                event.preventDefault();
+            }
+            else if (isTabSupported && event.key === 'Tab') {
                 // get caret position & selection
                 const val   = this.value,
                       start = this.selectionStart,
@@ -2358,6 +2466,18 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         }
 
         /**
+         * toggle tab support in message textarea
+         *
+         * @name   Editor.toggleTabSupport
+         * @private
+         * @function
+         */
+        function toggleTabSupport()
+        {
+            isTabSupported = !isTabSupported;
+        }
+
+        /**
          * view the Editor tab
          *
          * @name   Editor.viewEditor
@@ -2368,15 +2488,18 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         {
             // toggle buttons
             $messageEdit.addClass('active');
+            $messageEditParent.addClass('active');
             $messagePreview.removeClass('active');
+            $messagePreviewParent.removeClass('active');
 
-            $('#messageedit').attr('aria-selected','true');
-            $('#messagepreview').attr('aria-selected','false');
+            $messageEdit.attr('aria-selected','true');
+            $messagePreview.attr('aria-selected','false');
 
             PasteViewer.hide();
 
             // reshow input
             $message.removeClass('hidden');
+            $messageTabParent.removeClass('hidden');
 
             me.focusInput();
 
@@ -2400,13 +2523,16 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         {
             // toggle buttons
             $messageEdit.removeClass('active');
+            $messageEditParent.removeClass('active');
             $messagePreview.addClass('active');
+            $messagePreviewParent.addClass('active');
 
-            $('#messageedit').attr('aria-selected','false');
-            $('#messagepreview').attr('aria-selected','true');
+            $messageEdit.attr('aria-selected','false');
+            $messagePreview.attr('aria-selected','true');
 
             // hide input as now preview is shown
             $message.addClass('hidden');
+            $messageTabParent.addClass('hidden');
 
             // show preview
             PasteViewer.setText($message.val());
@@ -2465,6 +2591,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         me.show = function()
         {
             $message.removeClass('hidden');
+            $messageTabParent.removeClass('hidden');
             $editorTabs.removeClass('hidden');
         };
 
@@ -2477,6 +2604,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         me.hide = function()
         {
             $message.addClass('hidden');
+            $messageTabParent.addClass('hidden');
             $editorTabs.addClass('hidden');
         };
 
@@ -2516,7 +2644,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         };
 
         /**
-         * init status manager
+         * init editor
          *
          * preloads jQuery elements
          *
@@ -2527,14 +2655,18 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         {
             $editorTabs = $('#editorTabs');
             $message = $('#message');
+            $messageTab = $('#messagetab');
+            $messageTabParent = $messageTab.parent();
 
             // bind events
             $message.keydown(supportTabs);
+            $messageTab.change(toggleTabSupport);
 
-            // bind click events to tab switchers (a), but save parent of them
-            // (li)
-            $messageEdit = $('#messageedit').click(viewEditor).parent();
-            $messagePreview = $('#messagepreview').click(viewPreview).parent();
+            // bind click events to tab switchers (a), and save parents (li)
+            $messageEdit = $('#messageedit').click(viewEditor);
+            $messageEditParent = $messageEdit.parent();
+            $messagePreview = $('#messagepreview').click(viewPreview);
+            $messagePreviewParent = $messagePreview.parent();
         };
 
         return me;
@@ -2549,7 +2681,8 @@ jQuery.PrivateBin = (function($, RawDeflate) {
     const PasteViewer = (function () {
         const me = {};
 
-        let $placeholder,
+        let $messageTabParent,
+            $placeholder,
             $prettyMessage,
             $prettyPrint,
             $plainText,
@@ -2629,16 +2762,14 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             }
             // otherwise hide the placeholder
             $placeholder.addClass('hidden');
+            $messageTabParent.addClass('hidden');
 
-            switch (format) {
-                case 'markdown':
-                    $plainText.removeClass('hidden');
-                    $prettyMessage.addClass('hidden');
-                    break;
-                default:
-                    $plainText.addClass('hidden');
-                    $prettyMessage.removeClass('hidden');
-                    break;
+            if (format === 'markdown') {
+                $plainText.removeClass('hidden');
+                $prettyMessage.addClass('hidden');
+            } else {
+                $plainText.addClass('hidden');
+                $prettyMessage.removeClass('hidden');
             }
         }
 
@@ -2663,6 +2794,11 @@ jQuery.PrivateBin = (function($, RawDeflate) {
 
             format = newFormat;
             isChanged = true;
+
+            // update preview
+            if (Editor.isPreview()) {
+                PasteViewer.run();
+            }
         };
 
         /**
@@ -2765,6 +2901,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
          */
         me.init = function()
         {
+            $messageTabParent = $('#messagetab').parent();
             $placeholder = $('#placeholder');
             $plainText = $('#plaintext');
             $prettyMessage = $('#prettymessage');
@@ -3421,9 +3558,11 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             }
 
             // set date
+            const created = comment.getCreated();
+            const commentDate = created == 0 ? '' : ' (' + (new Date(created * 1000).toLocaleString()) + ')';
             $commentEntry.find('span.commentdate')
-                      .text(' (' + (new Date(comment.getCreated() * 1000).toLocaleString()) + ')')
-                      .attr('title', 'CommentID: ' + comment.id);
+                         .text(commentDate)
+                         .attr('title', 'CommentID: ' + comment.id);
 
             // if an avatar is available, display it
             const icon = comment.getIcon();
@@ -3541,7 +3680,6 @@ jQuery.PrivateBin = (function($, RawDeflate) {
                 if (fadeOut === true) {
                     setTimeout(function () {
                         $comment.removeClass('highlight');
-
                     }, 300);
                 }
             };
@@ -3650,11 +3788,6 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             $('#pasteFormatterDisplay').text($target.text());
             PasteViewer.setFormat(newFormat);
 
-            // update preview
-            if (Editor.isPreview()) {
-                PasteViewer.run();
-            }
-
             event.preventDefault();
         }
 
@@ -3696,6 +3829,18 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             } else {
                 $burnAfterReadingOption.removeClass('buttondisabled');
             }
+        }
+
+        /**
+         * Clear the password input in the top navigation
+         *
+         * @name TopNav.clearPasswordInput
+         * @function
+         */
+
+        function clearPasswordInput()
+        {
+            $passwordInput.val('');
         }
 
 
@@ -3762,7 +3907,8 @@ jQuery.PrivateBin = (function($, RawDeflate) {
          */
         function downloadText()
         {
-            var filename='paste-' + Model.getPasteId() + '.txt';
+            var fileFormat = PasteViewer.getFormat() === 'markdown' ? '.md' : '.txt';
+            var filename='paste-' + Model.getPasteId() + fileFormat;
             var text = PasteViewer.getText();
 
             var element = document.createElement('a');
@@ -3787,8 +3933,9 @@ jQuery.PrivateBin = (function($, RawDeflate) {
          */
         function setLanguage(event)
         {
-            document.cookie = 'lang=' + $(event.target).data('lang') + ';secure';
-            UiHelper.reloadHome();
+            document.cookie = 'lang=' + $(event.target).data('lang') + '; SameSite=Lax; Secure';
+            window.location.reload();
+            event.preventDefault();
         }
 
         /**
@@ -3902,7 +4049,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             }
             emailBody += I18n._('Link:');
             emailBody += EOL;
-            emailBody += `${window.location.href}`;
+            emailBody += $('#pasteurl').attr('href') || window.location.href; // href is tried first as it might have been shortened
             return emailBody;
         }
 
@@ -3944,29 +4091,39 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             const $emailconfirmmodal = $('#emailconfirmmodal');
             if ($emailconfirmmodal.length > 0) {
                 if (expirationDate !== null) {
-                    I18n._(
-                        $emailconfirmmodal.find('#emailconfirm-display'),
-                        'Recipient may become aware of your timezone, convert time to UTC?'
-                    );
                     const $emailconfirmTimezoneCurrent = $emailconfirmmodal.find('#emailconfirm-timezone-current');
                     const $emailconfirmTimezoneUtc = $emailconfirmmodal.find('#emailconfirm-timezone-utc');
-                    $emailconfirmTimezoneCurrent.off('click.sendEmailCurrentTimezone');
-                    $emailconfirmTimezoneCurrent.on('click.sendEmailCurrentTimezone', () => {
-                        const emailBody = templateEmailBody(expirationDateRoundedToSecond.toLocaleString(), isBurnafterreading);
-                        $emailconfirmmodal.modal('hide');
+                    let localeConfiguration = { dateStyle: 'long', timeStyle: 'long' };
+                    const bootstrap5EmailConfirmModal = typeof bootstrap !== 'undefined' && bootstrap.Tooltip.VERSION ?
+                        new bootstrap.Modal($emailconfirmmodal[0]) : null;
+
+                    function sendEmailAndHideModal() {
+                        const emailBody = templateEmailBody(
+                            // we don't use Date.prototype.toUTCString() because we would like to avoid GMT
+                            expirationDateRoundedToSecond.toLocaleString(
+                                [], localeConfiguration
+                            ), isBurnafterreading
+                        );
+                        if (bootstrap5EmailConfirmModal) {
+                            bootstrap5EmailConfirmModal.hide();
+                        } else {
+                            $emailconfirmmodal.modal('hide');
+                        }
                         triggerEmailSend(emailBody);
-                    });
+                    };
+
+                    $emailconfirmTimezoneCurrent.off('click.sendEmailCurrentTimezone');
+                    $emailconfirmTimezoneCurrent.on('click.sendEmailCurrentTimezone', sendEmailAndHideModal);
                     $emailconfirmTimezoneUtc.off('click.sendEmailUtcTimezone');
                     $emailconfirmTimezoneUtc.on('click.sendEmailUtcTimezone', () => {
-                        const emailBody = templateEmailBody(expirationDateRoundedToSecond.toLocaleString(
-                            undefined,
-                            // we don't use Date.prototype.toUTCString() because we would like to avoid GMT
-                            { timeZone: 'UTC', dateStyle: 'long', timeStyle: 'long' }
-                        ), isBurnafterreading);
-                        $emailconfirmmodal.modal('hide');
-                        triggerEmailSend(emailBody);
+                        localeConfiguration.timeZone = 'UTC';
+                        sendEmailAndHideModal();
                     });
-                    $emailconfirmmodal.modal('show');
+                    if (bootstrap5EmailConfirmModal) {
+                        bootstrap5EmailConfirmModal.show();
+                    } else {
+                        $emailconfirmmodal.modal('show');
+                    }
                 } else {
                     triggerEmailSend(templateEmailBody(null, isBurnafterreading));
                 }
@@ -4278,6 +4435,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         me.resetInput = function()
         {
             clearAttachmentInput();
+            clearPasswordInput();
             $burnAfterReading.prop('checked', burnAfterReadingDefault);
             $openDiscussion.prop('checked', openDiscussionDefault);
             if (openDiscussionDefault || !burnAfterReadingDefault) $openDiscussionOption.removeClass('buttondisabled');
@@ -4484,6 +4642,13 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             // bootstrap template drop downs
             $('ul.dropdown-menu li a', $('#expiration').parent()).click(updateExpiration);
             $('ul.dropdown-menu li a', $('#formatter').parent()).click(updateFormat);
+            // bootstrap5 & page drop downs
+            $('#pasteExpiration').on('change', function() {
+                pasteExpiration = Model.getExpirationDefault();
+            });
+            $('#pasteFormatter').on('change', function() {
+                PasteViewer.setFormat(Model.getFormatDefault());
+            });
 
             // initiate default state of checkboxes
             changeBurnAfterReading();
@@ -4492,7 +4657,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             // get default values from template or fall back to set value
             burnAfterReadingDefault = me.getBurnAfterReading();
             openDiscussionDefault = me.getOpenDiscussion();
-            pasteExpiration = Model.getExpirationDefault() || pasteExpiration;
+            pasteExpiration = Model.getExpirationDefault();
 
             createButtonsDisplayed = false;
             viewButtonsDisplayed = false;
@@ -4802,7 +4967,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
 
             // show notification
             const baseUri   = Helper.baseUri() + '?',
-                  url       = baseUri + data.id + '#' + CryptTool.base58encode(data.encryptionKey),
+                  url       = baseUri + data.id + (TopNav.getBurnAfterReading() ? loadConfirmPrefix : '#') + CryptTool.base58encode(data.encryptionKey),
                   deleteUrl = baseUri + 'pasteid=' + data.id + '&deletetoken=' + data.deletetoken;
             PasteStatus.createPasteNotification(url, deleteUrl);
 
@@ -4810,6 +4975,9 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             history.pushState({type: 'newpaste'}, document.title, url);
 
             TopNav.showViewButtons();
+
+            CopyToClipboard.setUrl(url);
+            CopyToClipboard.showKeyboardShortcutHint();
 
             // this cannot be grouped with showViewButtons due to remaining time calculation
             TopNav.showEmailButton();
@@ -5221,7 +5389,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             Alert.hideMessages();
             Alert.showLoading('Decrypting paste…', 'cloud-download');
 
-            if (typeof paste === 'undefined') {
+            if (typeof paste === 'undefined' || paste.type === 'click') {
                 // get cipher data and wait until it is available
                 Model.getPasteData(me.run);
                 return;
@@ -5246,6 +5414,8 @@ jQuery.PrivateBin = (function($, RawDeflate) {
 
             // shows the remaining time (until) deletion
             PasteStatus.showRemainingTime(paste);
+
+            CopyToClipboard.showKeyboardShortcutHint();
 
             Promise.all(decryptionPromises)
                 .then(() => {
@@ -5277,6 +5447,187 @@ jQuery.PrivateBin = (function($, RawDeflate) {
     })();
 
     /**
+     *
+     * @name CopyToClipboard
+     * @class
+     */
+    const CopyToClipboard = (function () {
+        const me = {};
+
+        let copyButton,
+            copyLinkButton,
+            copyIcon,
+            successIcon,
+            shortcutHint,
+            url;
+
+        /**
+         * Handle copy to clipboard button click
+         *
+         * @name CopyToClipboard.handleCopyButtonClick
+         * @private
+         * @function
+         */
+        function handleCopyButtonClick() {
+            $(copyButton).click(function() {
+                const text = PasteViewer.getText();
+                saveToClipboard(text);
+
+                toggleSuccessIcon();
+                showAlertMessage('Paste copied to clipboard');
+            });
+        };
+
+        /**
+         * Handle copy link to clipboard button click
+         *
+         * @name CopyToClipboard.handleCopyLinkButtonClick
+         * @private
+         * @function
+         */
+        function handleCopyLinkButtonClick() {
+            $(copyLinkButton).click(function () {
+                saveToClipboard(url);
+
+                showAlertMessage('Link copied to clipboard');
+            });
+        }
+
+        /**
+         * Handle CTRL+C/CMD+C keyboard shortcut
+         *
+         * @name CopyToClipboard.handleKeyboardShortcut
+         * @private
+         * @function
+         */
+        function handleKeyboardShortcut() {
+            $(document).bind('copy', function () {
+                if (!isUserSelectedTextToCopy()) {
+                    const text = PasteViewer.getText();
+                    saveToClipboard(text);
+
+                    showAlertMessage('Paste copied to clipboard');
+                }
+            });
+        };
+
+        /**
+         * Check if user selected some text on the page to copy it
+         *
+         * @name CopyToClipboard.isUserSelectedTextToCopy
+         * @private
+         * @function
+         * @returns {boolean}
+         */
+        function isUserSelectedTextToCopy() {
+            let text = '';
+
+            if (window.getSelection) {
+                text = window.getSelection().toString();
+            } else if (document.selection && document.selection.type != 'Control') {
+                text = document.selection.createRange().text;
+            }
+
+            return text.length > 0;
+        };
+
+        /**
+         * Save text to the clipboard
+         *
+         * @name CopyToClipboard.saveToClipboard
+         * @private
+         * @param {string} text
+         * @function
+         */
+        function saveToClipboard(text) {
+            navigator.clipboard.writeText(text);
+        };
+
+        /**
+         * Show alert message after text copy
+         *
+         * @name CopyToClipboard.showAlertMessage
+         * @private
+         * @param {string} message
+         * @function
+         */
+        function showAlertMessage(message) {
+            Alert.showStatus(message);
+        };
+
+        /**
+         * Toogle success icon after copy
+         *
+         * @name CopyToClipboard.toggleSuccessIcon
+         * @private
+         * @function
+         */
+        function toggleSuccessIcon() {
+            $(copyIcon).css('display', 'none');
+            $(successIcon).css('display', 'block');
+
+            setTimeout(function() {
+                $(copyIcon).css('display', 'block');
+                $(successIcon).css('display', 'none');
+            }, 1000);
+        };
+
+        /**
+         * Show keyboard shortcut hint
+         *
+         * @name CopyToClipboard.showKeyboardShortcutHint
+         * @function
+         */
+        me.showKeyboardShortcutHint = function () {
+            I18n._(
+                shortcutHint,
+                'To copy paste press on the copy button or use the clipboard shortcut <kbd>Ctrl</kbd>+<kbd>c</kbd>/<kbd>Cmd</kbd>+<kbd>c</kbd>'
+            );
+        };
+
+        /**
+         * Hide keyboard shortcut hint
+         *
+         * @name CopyToClipboard.showKeyboardShortcutHint
+         * @function
+         */
+        me.hideKeyboardShortcutHint = function () {
+            $(shortcutHint).html('');
+        };
+
+        /**
+         * Set paste url
+         *
+         * @name CopyToClipboard.setUrl
+         * @param {string} newUrl
+         * @function
+         */
+        me.setUrl = function (newUrl) {
+            url = newUrl;
+        };
+
+        /**
+         * Initialize
+         *
+         * @name CopyToClipboard.init
+         * @function
+         */
+        me.init = function() {
+            copyButton = $('#prettyMessageCopyBtn');
+            copyLinkButton = $('#copyLink');
+            copyIcon = $('#copyIcon');
+            successIcon = $('#copySuccessIcon');
+            shortcutHint = $('#copyShortcutHintText');
+
+            handleCopyButtonClick();
+            handleCopyLinkButtonClick();
+            handleKeyboardShortcut();
+        };
+
+        return me;
+    })();
+
+    /**
      * (controller) main PrivateBin logic
      *
      * @name   Controller
@@ -5297,6 +5648,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         {
             PasteStatus.hideMessages();
             Alert.hideMessages();
+            CopyToClipboard.hideKeyboardShortcutHint();
         };
 
         /**
@@ -5328,7 +5680,10 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             AttachmentViewer.removeAttachmentData();
 
             Alert.hideLoading();
-            history.pushState({type: 'create'}, document.title, Helper.baseUri());
+            // only push new state if we are coming from a different one
+            if (Helper.baseUri() != window.location) {
+                history.pushState({type: 'create'}, document.title, Helper.baseUri());
+            }
 
             // clear discussion
             DiscussionViewer.prepareNewDiscussion();
@@ -5352,6 +5707,12 @@ jQuery.PrivateBin = (function($, RawDeflate) {
                     Alert.showError('Cannot decrypt paste: Decryption key missing in URL (Did you use a redirector or an URL shortener which strips part of the URL?)');
                     return;
                 }
+            }
+
+            // check if we should request loading confirmation
+            if(window.location.hash.startsWith(loadConfirmPrefix)) {
+                Prompt.requestLoadConfirmation();
+                return;
             }
 
             // show proper elements on screen
@@ -5513,6 +5874,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             Prompt.init();
             TopNav.init();
             UiHelper.init();
+            CopyToClipboard.init();
 
             // check for legacy browsers before going any further
             if (!Legacy.Check.getInit()) {
@@ -5527,8 +5889,11 @@ jQuery.PrivateBin = (function($, RawDeflate) {
             me.initZ();
 
             // if delete token is passed (i.e. paste has been deleted by this
-            // access), there is nothing more to do
+            // access), add an event listener for the 'new' paste button in the alert
             if (Model.hasDeleteToken()) {
+                $("#new-from-alert").on("click", function () {
+                    UiHelper.reloadHome();
+                });
                 return;
             }
 
@@ -5569,6 +5934,7 @@ jQuery.PrivateBin = (function($, RawDeflate) {
         ServerInteraction: ServerInteraction,
         PasteEncrypter: PasteEncrypter,
         PasteDecrypter: PasteDecrypter,
+        CopyToClipboard: CopyToClipboard,
         Controller: Controller
     };
 })(jQuery, RawDeflate);
